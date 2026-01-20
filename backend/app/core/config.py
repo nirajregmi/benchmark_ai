@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "AI Observability Platform"
     DEBUG: bool = Field(default=False, description="Enable debug mode")
     CORS_ORIGINS: List[str] = [
-        "http://localhost:5173",  # Vite default
+        "http://localhost:5174",  # Vite default
         "http://localhost:3000",
     ]
 
