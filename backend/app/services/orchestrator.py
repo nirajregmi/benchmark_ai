@@ -1,6 +1,6 @@
 import json
 from datetime import datetime, timedelta
-from typing import AsyncGenerator
+from typing import AsyncGenerator, List
 
 import structlog
 from app.llm.client import LLMClient
@@ -14,7 +14,7 @@ class IntelligenceOrchestrator:
         self.llm_client = LLMClient()
         self.prom_service = PrometheusService()
 
-    async def process_user_query(self, user_query: str) -> AsyncGenerator[str, None]:
+    async def process_user_query(self, user_query: str, selected_pods: List[str] = []) -> AsyncGenerator[str, None]:
         """
         Main pipeline:
         1. Detect Intent
@@ -39,7 +39,7 @@ class IntelligenceOrchestrator:
         # Step 3: Build Query & Fetch Data
         try:
             if metric_type != "unknown":
-                query = build_promql_query(metric_type, resource_name)
+                query = build_promql_query(metric_type, resource_name, selected_pods)
                 metric_data = await self.prom_service.get_metric_data(
                     query=query,
                     start=start_time,

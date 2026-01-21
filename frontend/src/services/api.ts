@@ -10,6 +10,7 @@ export interface ChatMessage {
 export const sendMessageStream = async (
     message: string,
     history: ChatMessage[],
+    selectedPods: string[],
     onChunk: (chunk: string) => void
 ) => {
     try {
@@ -18,7 +19,7 @@ export const sendMessageStream = async (
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ message, history }),
+            body: JSON.stringify({ message, history, selected_pods: selectedPods }),
         });
 
         if (!response.ok) {

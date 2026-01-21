@@ -2,11 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Activity } from 'lucide-react';
 import { MessageBubble } from './MessageBubble';
 import { sendMessageStream, ChatMessage } from '../services/api';
+import { PodSelector } from './PodSelector';
 
 export const ChatInterface: React.FC = () => {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [selectedPods, setSelectedPods] = useState<string[]>([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
@@ -31,7 +33,7 @@ export const ChatInterface: React.FC = () => {
             let fullResponse = '';
             setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
 
-            await sendMessageStream(userMsg.content, messages, (chunk) => {
+            await sendMessageStream(userMsg.content, messages, selectedPods, (chunk) => {
                 fullResponse += chunk;
                 setMessages(prev => {
                     const newHistory = [...prev];
@@ -57,6 +59,9 @@ export const ChatInterface: React.FC = () => {
                 <Activity className="text-primary mr-3" />
                 <h1 className="text-xl font-bold tracking-tight">AI Observability Assistant</h1>
             </header>
+
+            {/* Pod Selection */}
+            <PodSelector onSelectionChange={setSelectedPods} />
 
             {/* Chat Area */}
             <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-4">

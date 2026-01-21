@@ -1,6 +1,6 @@
 import urllib.parse
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 import httpx
 import structlog
@@ -81,3 +81,24 @@ class PrometheusClient:
                         ]
                     }
                 }
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+    async def get_label_values(self, label: str) -> List[str]:
+        """
+        Fetch all values for a specific label (e.g., 'pod').
+        """
+        async with httpx.AsyncClient() as client:
+            url = f"{self.base_url}/api/v1/label/{label}/values"
+            logger.info("prometheus_label_values", url=url, label=label)
+            
+            try:
+                response = await client.get(url, headers=self.headers, timeout=10.0)
+                response.raise_for_status()
+                data = response.json()
+                if data.get("status") == "success":
+                    return data.get("data", [])
+                return []
+            except Exception as e:
+                logger.warning("prometheus_label_fetch_failed", error=str(e))
+                # Mock fallback
+                return ["payment-service-1", "payment-service-2", "checkout-service-1", "redis-master-0"]

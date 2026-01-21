@@ -79,3 +79,9 @@ class PrometheusService:
             step=step,
             series=series_list
         )
+
+    async def get_available_pods(self) -> List[str]:
+        """
+        Returns list of available pod names.
+        """
+        return await self.client.get_label_values("pod")

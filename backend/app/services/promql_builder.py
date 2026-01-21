@@ -1,13 +1,17 @@
-from typing import Optional
+from typing import Optional, List
 
-def build_promql_query(metric_type: str, resource_name: Optional[str]) -> str:
+def build_promql_query(metric_type: str, resource_name: Optional[str] = None, selected_pods: Optional[List[str]] = None) -> str:
     """
     Constructs a PromQL query based on metric type and resource filter.
-    Defaults to cluster-wide aggregation if no resource provided.
+    Prioritizes selected_pods if provided.
     """
     # Sanitize inputs (basic)
     resource_filter = ""
-    if resource_name:
+    if selected_pods and len(selected_pods) > 0:
+        # Create regex for multiple pods: (pod1|pod2)
+        pods_regex = "|".join(selected_pods)
+        resource_filter = f'{{pod=~"{pods_regex}"}}'
+    elif resource_name:
         # Avoid injection by using strict regex matcher in PromQL
         resource_filter = f'{{pod=~"{resource_name}.*"}}'
     
