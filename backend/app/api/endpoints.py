@@ -16,9 +16,7 @@ async def chat_query(
     request: ChatRequest, 
     orchestrator: IntelligenceOrchestrator = Depends(get_orchestrator)
 ):
-    """
-    Stream a response to a user's natural language question about metrics.
-    """
+
     logger.info("api_chat_query", message=request.message)
     
     async def event_generator():
@@ -31,10 +29,14 @@ async def chat_query(
 
 @router.get("/metrics/available")
 async def get_available_metrics():
-    """
-    Return list of supported metrics.
-    """
     return {
         "metrics": ["cpu", "memory", "network"],
         "operations": ["trend", "peak", "compare"]
     }
+
+@router.get("/metrics/pods")
+async def get_pods(
+    orchestrator: IntelligenceOrchestrator = Depends(get_orchestrator)
+):
+    # Access internal service directly or via orchestrator wrapper
+    return {"pods": await orchestrator.prom_service.get_available_pods()}

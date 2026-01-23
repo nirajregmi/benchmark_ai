@@ -3,10 +3,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import AnyHttpUrl, Field
 
 class Settings(BaseSettings):
-    """
-    Application core settings using Pydantic.
-    Reads from .env file or environment variables.
-    """
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -18,7 +14,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "AI Observability Platform"
     DEBUG: bool = Field(default=False, description="Enable debug mode")
     CORS_ORIGINS: List[str] = [
-        "http://localhost:5174",  # Vite default
+        "http://localhost:5173",
         "http://localhost:3000",
     ]
 
@@ -31,8 +27,7 @@ class Settings(BaseSettings):
         default=None,
         description="Bearer token for Prometheus authentication"
     )
-
-    # LLM Settings (LLaMA-3.3-70B via generic OpenAI-compatible API usually)
+    # LLM Settings
     LLM_API_URL: AnyHttpUrl = Field(
         ...,
         description="Endpoint for the LLM provider"
@@ -45,7 +40,6 @@ class Settings(BaseSettings):
     LLM_TEMPERATURE: float = 0.3
     LLM_MAX_TOKENS: int = 1024
 
-    # Intelligence Pipeline
-    MAX_METRIC_POINTS: int = 100  # Downsample large datasets for LLM context
+    MAX_METRIC_POINTS: int = 100 
 
 settings = Settings()

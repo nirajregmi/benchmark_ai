@@ -9,9 +9,7 @@ from app.llm.prompts import ANALYSIS_SYSTEM_PROMPT, INTENT_SYSTEM_PROMPT
 logger = structlog.get_logger()
 
 class LLMClient:
-    """
-    Client for interacting with LLaMA-3.3-70B via compatible API.
-    """
+
     def __init__(self):
         self.api_key = settings.LLM_API_KEY
         self.base_url = str(settings.LLM_API_URL).rstrip("/")
@@ -22,9 +20,7 @@ class LLMClient:
         }
 
     async def generate_intent(self, user_query: str) -> Dict[str, Any]:
-        """
-        Extracts intent from user query as JSON.
-        """
+
         payload = {
             "model": self.model,
             "messages": [
@@ -49,7 +45,6 @@ class LLMClient:
                 return json.loads(content)
             except Exception as e:
                 logger.error("llm_intent_error", error=str(e))
-                # Fallback to defaults
                 return {"metric_type": "unknown", "time_range": "1h"}
 
     async def stream_analysis(self, user_query: str, metric_context: str) -> AsyncGenerator[str, None]:
@@ -65,7 +60,7 @@ class LLMClient:
                 {"role": "user", "content": formatted_prompt}
             ],
             "temperature": settings.LLM_TEMPERATURE,
-            "stream": True # Enable streaming
+            "stream": True
         }
 
         async with httpx.AsyncClient() as client:
@@ -84,8 +79,9 @@ class LLMClient:
                             break
                         try:
                             chunk = json.loads(line)
-                            delta = chunk["choices"][0]["delta"].get("content", "")
-                            if delta:
-                                yield delta
+                            if chunk.get("choices") and len(chunk["choices"]) > 0:
+                                delta = chunk["choices"][0].get("delta", {}).get("content", "")
+                                if delta:
+                                    yield delta
                         except json.JSONDecodeError:
                             continue

@@ -8,6 +8,7 @@ class Message(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     history: Optional[List[Message]] = []
+    selected_pods: Optional[List[str]] = []
 
 class ChatResponse(BaseModel):
     response: str
