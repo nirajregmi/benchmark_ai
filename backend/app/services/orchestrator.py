@@ -15,6 +15,13 @@ class IntelligenceOrchestrator:
         self.prom_service = PrometheusService()
 
     async def process_user_query(self, user_query: str, selected_pods: List[str] = []) -> AsyncGenerator[str, None]:
+        """
+        Main pipeline:
+        1. Detect Intent
+        2. Build PromQL
+        3. Fetch Metrics
+        4. Stream LLM Analysis
+        """
         logger.info("processing_query", query=user_query)
 
         # Step 1: Detect Intent
