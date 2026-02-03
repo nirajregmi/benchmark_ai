@@ -1,1 +1,0 @@
-print("\033[31mWelcome to report Generator\033[0m")

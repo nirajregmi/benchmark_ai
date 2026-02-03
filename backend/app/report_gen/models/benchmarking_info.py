@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from report_gen.models.deployment_info import DeploymentInfo
-from report_gen.models.request_composition_info import RequestCompositionInfo
+from app.report_gen.models.deployment_info import DeploymentInfo
+from app.report_gen.models.request_composition_info import RequestCompositionInfo
 
 
 @dataclass

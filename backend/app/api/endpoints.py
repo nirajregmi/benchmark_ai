@@ -55,6 +55,7 @@ async def generate_report_endpoint(
     Generate and download a DOCX report comparing two pods.
     """
     from app.services.report_bridge import ReportBridge
+    from fastapi import HTTPException
     
     bridge = ReportBridge()
     try:
@@ -66,4 +67,4 @@ async def generate_report_endpoint(
         )
     except Exception as e:
         logger.error("report_generation_failed", error=str(e))
-        return {"error": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))

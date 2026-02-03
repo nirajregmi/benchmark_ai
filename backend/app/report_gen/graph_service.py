@@ -3,10 +3,10 @@ from datetime import datetime
 
 from matplotlib import pyplot as plt
 
-from report_gen.models.timestamp_series import TimestampSeries
+from app.report_gen.models.timestamp_series import TimestampSeries
 
 
-def line_chart_bytes(series: TimestampSeries, x_label: str, y_label: str, title: str, dpi: int = 300,
+def line_chart_bytes(series: TimestampSeries, title: str, x_label: str, y_label: str, dpi: int = 300,
                      color: str = 'blue') -> bytes:
     """
     Generates a line chart and returns it as a byte array.

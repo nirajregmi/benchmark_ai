@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from report_gen.models.timestamp_series import TimestampSeries
+from app.report_gen.models.timestamp_series import TimestampSeries
 
 
 @dataclass

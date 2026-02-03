@@ -1,9 +1,9 @@
 from docx import Document
 from docx.shared import Inches
 
-from report_gen.models.benchmark_data import BenchmarkData
-from report_gen.models.benchmarking_info import BenchmarkingInfo
-from report_gen.models.report_graphs import ReportGraphs
+from app.report_gen.models.benchmark_data import BenchmarkData
+from app.report_gen.models.benchmarking_info import BenchmarkingInfo
+from app.report_gen.models.report_graphs import ReportGraphs
 
 
 def create_deployment_table(doc, benchmark_info):
@@ -36,20 +36,22 @@ def create_deployment_table(doc, benchmark_info):
 
 
 def create_table(rows, cols, headers, data, doc, style='Table Grid'):
-    table = doc.add_table(rows=rows, cols=cols)
+    # Calculate actual rows needed: header + data rows
+    actual_rows = len(data) + 1  # +1 for header row
+    table = doc.add_table(rows=actual_rows, cols=cols)
     table.style = style
     hdr_cells = table.rows[0].cells
     for i in range(cols):
         hdr_cells[i].text = headers[i]
-    for i in range(1, rows):
-        row_cells = table.rows[i].cells
+    for i in range(len(data)):
+        row_cells = table.rows[i + 1].cells
         for j in range(cols):
-            row_cells[j].text = data[i - 1][j]
+            row_cells[j].text = data[i][j]
     return table
 
 
 def generate_word_report(release1: BenchmarkData, release2: BenchmarkData, benchmark_info: BenchmarkingInfo,
-                         graphs: ReportGraphs):
+                         graphs: ReportGraphs, ai_analysis: str = None):
     """
     Improved Word report generation with robust attribute checks and modular table creation.
     """
@@ -62,37 +64,37 @@ def generate_word_report(release1: BenchmarkData, release2: BenchmarkData, bench
     available_width = section.page_width - section.left_margin - section.right_margin
 
     # Main title
-    doc.add_heading("Benchmark Report", level=1)
+    doc.add_heading("Pod Comparison Report", level=1)
 
-    # Story and Branch
+    # Pod Names
     meta_p = doc.add_paragraph()
-    meta_p.add_run("Story: ").bold = True
-    meta_p.add_run(f"{benchmark_info.story_name}\n")
-    meta_p.add_run("Test Branch: ").bold = True
-    meta_p.add_run(f"{benchmark_info.branch_name}\n")
+    meta_p.add_run("Pod 1: ").bold = True
+    meta_p.add_run(f"{release1.pod_name}\n")
+    meta_p.add_run("Pod 2: ").bold = True
+    meta_p.add_run(f"{release2.pod_name}\n")
+    meta_p.add_run("Analysis Period: ").bold = True
+    meta_p.add_run("Last 1 hour\n")
 
-    # Requests
-    req_p = doc.add_paragraph()
-    req_p.add_run("Requests:").bold = True
-    req_p.add_run("\nTBA Claims:\n")
-    for claim in getattr(benchmark_info, 'tba_claims', []):
-        req_p.add_run(f"    {claim}\n")
+    # AI Analysis Section (if provided)
+    if ai_analysis:
+        doc.add_page_break()
+        doc.add_heading("AI-Powered Analysis", level=2)
+        # Parse the AI analysis and add it to the document
+        for line in ai_analysis.split('\n'):
+            if line.startswith('## '):
+                doc.add_heading(line[3:], level=3)
+            elif line.startswith('# '):
+                doc.add_heading(line[2:], level=2)
+            elif line.strip():
+                doc.add_paragraph(line)
+    
+    doc.add_page_break()
 
-    # Request Composition Table
-    doc.add_heading("Request Composition", level=2)
-    req_table = create_table(
-        9, 3,
-        ["History count", "Hit data percentage array (20%)", "No Hit data percentage (80%)"],
-        [
-            [str(comp.history_count), str(comp.hit_data_percentage), str(comp.miss_data_percentage)]
-            for comp in benchmark_info.request_composition
-        ],
-        doc
-    )
+    doc.add_page_break()
 
     # Deployment Configuration Table
     doc.add_heading("Deployment Configuration", level=2)
-    dep_config_table = create_table(6, 2, ['Resource', 'Value'], [
+    dep_config_table = create_table(None, 2, ['Resource', 'Value'], [
         ['resources.limits.cpu', benchmark_info.deployment_info.cpu_limits],
         ['resources.limits.memory', benchmark_info.deployment_info.memory_limits],
         ['env.heapSize', benchmark_info.deployment_info.heap_size],
@@ -100,44 +102,36 @@ def generate_word_report(release1: BenchmarkData, release2: BenchmarkData, bench
         ['resources.requests.memory', benchmark_info.deployment_info.memory_requests],
     ], doc)
 
-    # Version Comparison Table
-    doc.add_heading("Before Implementing " + benchmark_info.edit_name, level=2)
-    ver_table = create_table(4, 2, ['Project', 'Version'], [
-        ['waah-rules',release1.waah_version],
-        ['waah-taxonomy', release1.waah_taxonomy_version],
-        ['waah-kernel', release1.waah_kernel_version],
-    ], doc)
-
-    # Before Implementation Metrics
-    doc.add_heading("Metrics", level=2)
+    # Pod 1 Metrics
+    doc.add_heading(f"Pod 1: {release1.pod_name}", level=2)
 
     if graphs.before_memory_usage_graph is not None:
         doc.add_paragraph()  # Add spacing
-    doc.add_heading("Memory Usage Graph", level=3)
+    doc.add_heading("Memory Usage", level=3)
     doc.add_picture(get_image_stream(graphs.before_memory_usage_graph), width=available_width)
     if graphs.before_cpu_usage_graph is not None:
         doc.add_paragraph()  # Add spacing
-    doc.add_heading("CPU Usage Graph", level=3)
+    doc.add_heading("CPU Usage", level=3)
     doc.add_picture(get_image_stream(graphs.before_cpu_usage_graph), width=available_width)
     if graphs.before_cpu_throttling_graph is not None:
         doc.add_paragraph()  # Add spacing
-    doc.add_heading("CPU Throttle Graph", level=3)
+    doc.add_heading("CPU Throttling", level=3)
     doc.add_picture(get_image_stream(graphs.before_cpu_throttling_graph), width=available_width)
 
-    # After Implementation Metrics
-    doc.add_heading("After Implementing "+benchmark_info.edit_name, level=2)
+    # Pod 2 Metrics
+    doc.add_heading(f"Pod 2: {release2.pod_name}", level=2)
 
     if graphs.after_memory_usage_graph is not None:
         doc.add_paragraph()  # Add spacing
-    doc.add_heading("Memory Usage Graph", level=3)
+    doc.add_heading("Memory Usage", level=3)
     doc.add_picture(get_image_stream(graphs.after_memory_usage_graph), width=available_width)
     if graphs.after_cpu_usage_graph is not None:
         doc.add_paragraph()  # Add spacing
-    doc.add_heading("CPU Usage Graph", level=3)
+    doc.add_heading("CPU Usage", level=3)
     doc.add_picture(get_image_stream(graphs.after_cpu_usage_graph), width=available_width)
     if graphs.after_cpu_throttling_graph is not None:
         doc.add_paragraph()  # Add spacing
-    doc.add_heading("CPU Throttle Graph", level=3)
+    doc.add_heading("CPU Throttling", level=3)
     doc.add_picture(get_image_stream(graphs.after_cpu_throttling_graph), width=available_width)
 
     # Return the Document object

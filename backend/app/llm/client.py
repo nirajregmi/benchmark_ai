@@ -85,3 +85,50 @@ class LLMClient:
                                     yield delta
                         except json.JSONDecodeError:
                             continue
+
+    async def analyze_pod_comparison(self, pod1_name: str, pod2_name: str, pod1_metrics: Dict[str, Any], pod2_metrics: Dict[str, Any]) -> str:
+        """
+        Generate AI analysis comparing two pods' metrics.
+        Returns the full analysis as a string.
+        """
+        from app.llm.prompts import POD_COMPARISON_PROMPT
+        
+        comparison_context = f"""
+POD 1: {pod1_name}
+CPU Usage: avg={pod1_metrics['cpu']['avg']:.4f}, max={pod1_metrics['cpu']['max']:.4f}, min={pod1_metrics['cpu']['min']:.4f}
+Memory Usage: avg={pod1_metrics['memory']['avg']:.2f} bytes, max={pod1_metrics['memory']['max']:.2f}, min={pod1_metrics['memory']['min']:.2f}
+CPU Throttling: avg={pod1_metrics['cpu_throttling']['avg']:.6f}, max={pod1_metrics['cpu_throttling']['max']:.6f}
+Data Points: {pod1_metrics['cpu']['count']}
+
+POD 2: {pod2_name}
+CPU Usage: avg={pod2_metrics['cpu']['avg']:.4f}, max={pod2_metrics['cpu']['max']:.4f}, min={pod2_metrics['cpu']['min']:.4f}
+Memory Usage: avg={pod2_metrics['memory']['avg']:.2f} bytes, max={pod2_metrics['memory']['max']:.2f}, min={pod2_metrics['memory']['min']:.2f}
+CPU Throttling: avg={pod2_metrics['cpu_throttling']['avg']:.6f}, max={pod2_metrics['cpu_throttling']['max']:.6f}
+Data Points: {pod2_metrics['cpu']['count']}
+
+Time Period: 1 hour comparison
+"""
+        
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": POD_COMPARISON_PROMPT},
+                {"role": "user", "content": f"Analyze and compare these two Kubernetes pods:\n\n{comparison_context}"}
+            ],
+            "temperature": settings.LLM_TEMPERATURE,
+            "max_tokens": settings.LLM_MAX_TOKENS
+        }
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            try:
+                response = await client.post(
+                    f"{self.base_url}/chat/completions", 
+                    json=payload, 
+                    headers=self.headers
+                )
+                response.raise_for_status()
+                data = response.json()
+                return data["choices"][0]["message"]["content"]
+            except Exception as e:
+                logger.error("llm_comparison_error", error=str(e))
+                return f"Error generating AI analysis: {str(e)}"
