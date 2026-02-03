@@ -35,6 +35,12 @@ def build_promql_query(metric_type: str, resource_name: Optional[str] = None, se
         else:
             return 'sum(rate(container_network_receive_bytes_total[5m]))'
             
+    elif metric_type == "cpu_throttling":
+        if resource_filter:
+            return f'sum by (pod) (rate(container_cpu_cfs_throttled_seconds_total{resource_filter}[5m]))'
+        else:
+            return 'sum(rate(container_cpu_cfs_throttled_seconds_total[5m]))'
+
     else:
         # Default fallback or "unknown" intent
         return 'up' 
