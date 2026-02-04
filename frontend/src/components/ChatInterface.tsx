@@ -3,6 +3,7 @@ import { Send, Activity } from 'lucide-react';
 import { MessageBubble } from './MessageBubble';
 import { sendMessageStream, ChatMessage } from '../services/api';
 import { PodSelector } from './PodSelector';
+import { ReportButton } from './ReportButton';
 
 export const ChatInterface: React.FC = () => {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -57,11 +58,16 @@ export const ChatInterface: React.FC = () => {
             {/* Header */}
             <header className="flex items-center px-6 py-4 border-b border-gray-700 bg-dark-surface">
                 <Activity className="text-primary mr-3" />
-                <h1 className="text-xl font-bold tracking-tight">AI Observability Assistant</h1>
+                <h1 className="text-xl font-bold tracking-tight">AI Metric Assistant</h1>
             </header>
 
-            {/* Pod Selection */}
-            <PodSelector onSelectionChange={setSelectedPods} />
+            {/* Pod Selection with Report Button */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center pr-4">
+                <PodSelector onSelectionChange={setSelectedPods} />
+                <div className="pl-4 pb-2 md:pb-0">
+                    <ReportButton selectedPods={selectedPods} />
+                </div>
+            </div>
 
             {/* Chat Area */}
             <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-4">

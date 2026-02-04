@@ -31,9 +31,6 @@ async def chat_query(
 
 @router.get("/metrics/available")
 async def get_available_metrics():
-    """
-    Return list of supported metrics.
-    """
     return {
         "metrics": ["cpu", "memory", "network"],
         "operations": ["trend", "peak", "compare"]
@@ -48,3 +45,26 @@ async def get_pods(
     """
     # Access internal service directly or via orchestrator wrapper
     return {"pods": await orchestrator.prom_service.get_available_pods()}
+
+
+@router.post("/report/generate")
+async def generate_report_endpoint(
+    request: ChatRequest,
+):
+    """
+    Generate and download a DOCX report comparing two pods.
+    """
+    from app.services.report_bridge import ReportBridge
+    from fastapi import HTTPException
+    
+    bridge = ReportBridge()
+    try:
+        file_stream = await bridge.generate_comparison_report(request.selected_pods)
+        return StreamingResponse(
+            file_stream, 
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": "attachment; filename=benchmark_report.docx"}
+        )
+    except Exception as e:
+        logger.error("report_generation_failed", error=str(e))
+        raise HTTPException(status_code=500, detail=str(e))

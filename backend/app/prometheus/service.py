@@ -19,9 +19,6 @@ class PrometheusService:
         step: str = "5m", 
         metric_name: str = "Unknown Metric"
     ) -> MetricData:
-        """
-        Executes a range query and normalizes the result.
-        """
         raw_data = await self.client.query_range(query, start, end, step)
         return self._normalize_response(raw_data, query, start, end, step, metric_name)
 
@@ -34,9 +31,6 @@ class PrometheusService:
         step: str,
         metric_name: str
     ) -> MetricData:
-        """
-        Converts Prometheus JSON format to MetricData.
-        """
         status = raw_data.get("status")
         if status != "success":
             logger.error("prometheus_error", status=status, data=raw_data)
@@ -49,7 +43,7 @@ class PrometheusService:
         
         for res in results:
             labels = res.get("metric", {})
-            values = res.get("values", []) # List of [timestamp, value]
+            values = res.get("values", [])
             
             points = []
             vals = []
@@ -58,7 +52,6 @@ class PrometheusService:
                 points.append(MetricPoint(timestamp=datetime.fromtimestamp(t), value=val_float))
                 vals.append(val_float)
             
-            # Simple aggregation
             min_val = min(vals) if vals else None
             max_val = max(vals) if vals else None
             avg_val = sum(vals) / len(vals) if vals else None

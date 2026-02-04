@@ -1,6 +1,6 @@
 
 
-const API_BASE_URL = 'http://localhost:8001/api/v1';
+const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 export interface ChatMessage {
     role: 'user' | 'assistant';
@@ -49,6 +49,35 @@ export const sendMessageStream = async (
         }
     } catch (error) {
         console.error('Error sending message:', error);
+        throw error;
+    }
+};
+
+export const downloadReport = async (selectedPods: string[]) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/report/generate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ message: 'Generate Report', selected_pods: selectedPods }),
+        });
+
+        if (!response.ok) {
+            throw new Error('Report generation failed');
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `benchmark_report_${new Date().toISOString().slice(0, 10)}.docx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    } catch (error) {
+        console.error('Error downloading report:', error);
         throw error;
     }
 };

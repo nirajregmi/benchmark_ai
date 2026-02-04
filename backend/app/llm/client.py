@@ -9,9 +9,7 @@ from app.llm.prompts import ANALYSIS_SYSTEM_PROMPT, INTENT_SYSTEM_PROMPT
 logger = structlog.get_logger()
 
 class LLMClient:
-    """
-    Client for interacting with LLaMA-3.3-70B via compatible API.
-    """
+
     def __init__(self):
         self.api_key = settings.LLM_API_KEY
         self.base_url = str(settings.LLM_API_URL).rstrip("/")
@@ -22,9 +20,7 @@ class LLMClient:
         }
 
     async def generate_intent(self, user_query: str) -> Dict[str, Any]:
-        """
-        Extracts intent from user query as JSON.
-        """
+
         payload = {
             "model": self.model,
             "messages": [
@@ -49,7 +45,6 @@ class LLMClient:
                 return json.loads(content)
             except Exception as e:
                 logger.error("llm_intent_error", error=str(e))
-                # Fallback to defaults
                 return {"metric_type": "unknown", "time_range": "1h"}
 
     async def stream_analysis(self, user_query: str, metric_context: str) -> AsyncGenerator[str, None]:
@@ -65,7 +60,7 @@ class LLMClient:
                 {"role": "user", "content": formatted_prompt}
             ],
             "temperature": settings.LLM_TEMPERATURE,
-            "stream": True # Enable streaming
+            "stream": True
         }
 
         async with httpx.AsyncClient() as client:
@@ -84,8 +79,56 @@ class LLMClient:
                             break
                         try:
                             chunk = json.loads(line)
-                            delta = chunk["choices"][0]["delta"].get("content", "")
-                            if delta:
-                                yield delta
+                            if chunk.get("choices") and len(chunk["choices"]) > 0:
+                                delta = chunk["choices"][0].get("delta", {}).get("content", "")
+                                if delta:
+                                    yield delta
                         except json.JSONDecodeError:
                             continue
+
+    async def analyze_pod_comparison(self, pod1_name: str, pod2_name: str, pod1_metrics: Dict[str, Any], pod2_metrics: Dict[str, Any]) -> str:
+        """
+        Generate AI analysis comparing two pods' metrics.
+        Returns the full analysis as a string.
+        """
+        from app.llm.prompts import POD_COMPARISON_PROMPT
+        
+        comparison_context = f"""
+POD 1: {pod1_name}
+CPU Usage: avg={pod1_metrics['cpu']['avg']:.4f}, max={pod1_metrics['cpu']['max']:.4f}, min={pod1_metrics['cpu']['min']:.4f}
+Memory Usage: avg={pod1_metrics['memory']['avg']:.2f} bytes, max={pod1_metrics['memory']['max']:.2f}, min={pod1_metrics['memory']['min']:.2f}
+CPU Throttling: avg={pod1_metrics['cpu_throttling']['avg']:.6f}, max={pod1_metrics['cpu_throttling']['max']:.6f}
+Data Points: {pod1_metrics['cpu']['count']}
+
+POD 2: {pod2_name}
+CPU Usage: avg={pod2_metrics['cpu']['avg']:.4f}, max={pod2_metrics['cpu']['max']:.4f}, min={pod2_metrics['cpu']['min']:.4f}
+Memory Usage: avg={pod2_metrics['memory']['avg']:.2f} bytes, max={pod2_metrics['memory']['max']:.2f}, min={pod2_metrics['memory']['min']:.2f}
+CPU Throttling: avg={pod2_metrics['cpu_throttling']['avg']:.6f}, max={pod2_metrics['cpu_throttling']['max']:.6f}
+Data Points: {pod2_metrics['cpu']['count']}
+
+Time Period: 1 hour comparison
+"""
+        
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": POD_COMPARISON_PROMPT},
+                {"role": "user", "content": f"Analyze and compare these two Kubernetes pods:\n\n{comparison_context}"}
+            ],
+            "temperature": settings.LLM_TEMPERATURE,
+            "max_tokens": settings.LLM_MAX_TOKENS
+        }
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            try:
+                response = await client.post(
+                    f"{self.base_url}/chat/completions", 
+                    json=payload, 
+                    headers=self.headers
+                )
+                response.raise_for_status()
+                data = response.json()
+                return data["choices"][0]["message"]["content"]
+            except Exception as e:
+                logger.error("llm_comparison_error", error=str(e))
+                return f"Error generating AI analysis: {str(e)}"

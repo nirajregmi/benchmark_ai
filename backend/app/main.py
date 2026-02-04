@@ -6,16 +6,12 @@ import structlog
 from app.core.config import settings
 from app.core.logging import setup_logging
 
-# Setup structured logging
 setup_logging()
 logger = structlog.get_logger()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Application lifecycle events.
-    Initialize connections (DB, HTTP Clients) here.
-    """
+
     logger.info("startup", project=settings.PROJECT_NAME)
     yield
     logger.info("shutdown")
@@ -26,11 +22,9 @@ def create_application() -> FastAPI:
         openapi_url=f"{settings.API_V1_STR}/openapi.json",
         lifespan=lifespan,
     )
-
-    # CORS Middleware
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS,
+        allow_origins=settings.CORS_ORIGINS,  # Use the flat list directly
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -41,7 +35,6 @@ def create_application() -> FastAPI:
     async def health_check():
         return {"status": "ok", "project": settings.PROJECT_NAME}
 
-    # Include API routers
     from app.api.endpoints import router as api_router
     app.include_router(api_router, prefix=settings.API_V1_STR)
 
